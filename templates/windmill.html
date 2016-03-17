@@ -1,1 +1,14 @@
 <h1>Windmill</h1>
+<p>
+    Wind Speed: {{windSpeed}} m/s
+    <div>
+        <button ng-click="addWindSpeed(1)">Increase</button>
+        <button ng-click="addWindSpeed(-1)">Decrease</button>
+    </div>
+</p>
+<p>
+    Active Power: {{activePower}} kW
+</p>
+<p>
+    Status: {{status ? 'Enabled' : 'Disabled'}}
+</p>

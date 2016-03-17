@@ -7,11 +7,14 @@
     <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body ng-app="app">
-    <ul class="menu">
-        <li><a href="#/login">view1</a></li>
-        <li><a href="#/windmill">view2</a></li>
+    
+    <!-- Navbar -->
+    <ul ng-controller="navbarCtrl">
+        <li>I am in: {{view}}</li>
+        <li><a href="#/login">login</a></li>
+        <li><a href="#/windmill">windmill</a></li>        
     </ul>
-
+    <!-- Content -->
     <div ng-view></div>
 
     <!-- Libs -->

@@ -6,6 +6,11 @@ angular.module('app', [
   'app.controllers'
 ])
 
+.constant("lit", {
+    baseUrl: "http://cscadademonight.westeurope.cloudapp.azure.com:8080/api",
+    interval: 3000
+})
+
 .config(['$routeProvider', function($routeProvider) {
   $routeProvider
 
