@@ -9,17 +9,17 @@ angular.module('app', [
 .config(['$routeProvider', function($routeProvider) {
   $routeProvider
 
-  .when('/view1', {
-    templateUrl: 'templates/view1.html',
-    controller: 'view1Ctrl'
+  .when('/login', {
+    templateUrl: 'templates/login.html',
+    controller: 'loginCtrl'
   })
 
-  .when('/view2', {
-    templateUrl: 'templates/view2.html',
-    controller: 'view2Ctrl'
+  .when('/windmill', {
+    templateUrl: 'templates/windmill.html',
+    controller: 'windmillCtrl'
   })
 
-  .otherwise({redirectTo: '/view1'});
+  .otherwise({redirectTo: '/login'});
   
 }]);
 

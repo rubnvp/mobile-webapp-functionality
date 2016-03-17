@@ -3,11 +3,11 @@
 
 angular.module('app.controllers', ['app.services'])
 
-.controller('view1Ctrl', [function() {
+.controller('loginCtrl', [function() {
 
 }])
 
-.controller('view2Ctrl', [function() {
+.controller('windmillCtrl', [function() {
 
 }]);
 
