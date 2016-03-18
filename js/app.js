@@ -7,8 +7,11 @@ angular.module('app', [
 ])
 
 .constant("lit", {
+    maxWindSpeed: 30,
+    decreaseInterval: 3000,
+    decreaseValue: 3,
     baseUrl: "http://cscadademonight.westeurope.cloudapp.azure.com:8080/api",
-    interval: 3000
+    updateInterval: 3000
 })
 
 .config(['$routeProvider', function($routeProvider) {

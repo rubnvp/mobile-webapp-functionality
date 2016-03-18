@@ -19,7 +19,15 @@ angular.module('app.controllers', ['app.services'])
     // signals
     $scope.windSpeed = 0;    
     $scope.addWindSpeed = function(add){
-        if ($scope.status) $scope.windSpeed += add;
+        var windSpeed = $scope.windSpeed;
+        if ($scope.status) {
+            if( add > 0) {
+                $scope.windSpeed =  windSpeed+add > lit.maxWindSpeed ? lit.maxWindSpeed : windSpeed + add;
+            }
+            else {
+                $scope.windSpeed =  windSpeed+add < 0 ? 0 : windSpeed + add;
+            }
+        }
     };
     
     $scope.activePower = 0;
@@ -32,15 +40,25 @@ angular.module('app.controllers', ['app.services'])
     
     $scope.status = false;
     
+    // windSpeed decreaser
+    function decreaseWindSpeed(){
+        var windSpeed = $scope.windSpeed;
+        if (windSpeed > 0) {
+            $scope.windSpeed = windSpeed < lit.decreaseValue ? 0 : windSpeed - lit.decreaseValue;
+        }
+    }
+    $interval(decreaseWindSpeed, lit.decreaseInterval);
+    
     // updater
-    function refresh(){
+    function update(){
         CompactSCADA.getStatus().then(function(status){
             $scope.status = status;
-            if (!status) $scope.windSpeed = 0;
+            //if (!status) $scope.windSpeed = 0;
         });
+        CompactSCADA.setWindSpeed($scope.windSpeed);
     }
-    $interval(refresh, lit.interval);
-    refresh();
+    $interval(update, lit.updateInterval);
+    update();
 });
 
 })();
