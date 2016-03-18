@@ -9,11 +9,16 @@
 <body ng-app="app">
     
     <!-- Navbar -->
-    <ul ng-controller="navbarCtrl">
-        <li>I am in: {{view}}</li>
-        <li><a href="#/login">login</a></li>
-        <li><a href="#/windmill">windmill</a></li>        
-    </ul>
+    <div ng-controller="navbarCtrl">
+        <h1>{{navbarTitle}}</h1> <button ng-show="logged" ng-click="logout()">Logout</button>
+        <ul>
+            <li>Current View: {{view}}</li>
+            <li>I am logged: {{logged}}</li>
+            <li>I am logged as: {{username}}</li>
+            <li><a href="#/login">login</a></li>
+            <li><a href="#/windmill">windmill</a></li>        
+        </ul>
+    </div>
     <!-- Content -->
     <div ng-view></div>
 

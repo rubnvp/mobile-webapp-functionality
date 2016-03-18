@@ -4,38 +4,50 @@
 angular.module('app.services', [])
 
 .factory('Navbar', function(){
-    function view(view) {return null;}
-    
+    // will be overwrite by navbarCtrl
     var Service = {
-        view: view
+        view: null,
+        logged: null,
+        loggedAs: null
     };     
     return Service;
 })
 
-.factory('CompactSCADA', function($http, $q, lit){
-    var signal = "WTG.User1.Status";
+.factory('Login', function(Navbar, CompactSCADA){
+    function login(username){
+        console.log("logged as "+username);
+        Navbar.logged(true, username);
+    }
+    
+    function logout(){
+        console.log("logout");
+        Navbar.logged(false, undefined);
+    }
+    
+    var Service = {
+        login: login,
+        logout: logout
+    };     
+    return Service;
+})
+
+.factory('CompactSCADA', function($http, lit){
+    var signal = "WTG.User1";
 
     function getStatus() {
-        // var req = {
-        //     method: 'POST',
-        //     url: lit.baseUrl,
-        //     headers: {
-        //         'Content-Type': 'application/json'
-        //     },
-        //     data: signal
-        // }
-        // return $http(req).then(function(result){
-        //     debugger;
-        //     return result.data[0].Value;
-        // });
-        return $http.get("http://cscadademonight.westeurope.cloudapp.azure.com:8081/compactscada/read/patterns/"+signal)
-        .then(function(result){
+        return $http.post(lit.baseUrl+'/itemsFromPattern', signal+'.Status').then(function(result){
             return result.data[0].Value;
         });
     }
     
     function setWindSpeed(windSpeed){
-        console.log('windSpeed = '+windSpeed);
+        var itemToSend = [{
+            Name: signal+'.WindSpeed',
+            Value: windSpeed
+        }];
+        return $http.post(lit.baseUrl+'/item', itemToSend).then(function(result){
+            console.log("Set "+signal+'.WindSpeed'+" to "+windSpeed);
+        });
     }
     
     var Service = {

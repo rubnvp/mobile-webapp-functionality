@@ -3,15 +3,44 @@
 
 angular.module('app.controllers', ['app.services'])
 
-.controller('navbarCtrl', function($scope, Navbar) {    
+.controller('navbarCtrl', function($scope, Navbar, Login) {
+    $scope.view = null; 
     Navbar.view = function(view) {
         $scope.view = view;
+    };
+    
+    $scope.logged = false;
+    $scope.username = undefined; 
+    Navbar.logged = function(logged, username) {
+        $scope.logged = logged;
+        $scope.username = username;
+    }        
+    
+    $scope.navbarTitle = undefined;
+    function setNavbarTitle(){
+        switch ($scope.view){
+            case 'login': 
+                $scope.navbarTitle = "Welcome!";
+            break;
+            case 'windmill':
+                $scope.navbarTitle = !$scope.logged ? "Not logged" : $scope.username;
+            break;
+            default: 
+        }
+    }
+    $scope.$watch(setNavbarTitle);
+    
+    $scope.logout = function() {
+        Login.logout();
     }
 })
 
-.controller('loginCtrl', function($scope, Navbar) {
-    Navbar.view('login'); 
-  
+.controller('loginCtrl', function($scope, Navbar, Login) {
+    Navbar.view('login');
+    
+    $scope.login = function() {
+        Login.login($scope.username);
+    }    
 })
 
 .controller('windmillCtrl', function($scope, $interval, lit, Navbar, CompactSCADA) {
@@ -47,13 +76,13 @@ angular.module('app.controllers', ['app.services'])
             $scope.windSpeed = windSpeed < lit.decreaseValue ? 0 : windSpeed - lit.decreaseValue;
         }
     }
-    $interval(decreaseWindSpeed, lit.decreaseInterval);
+    //$interval(decreaseWindSpeed, lit.decreaseInterval);
     
     // updater
     function update(){
         CompactSCADA.getStatus().then(function(status){
             $scope.status = status;
-            //if (!status) $scope.windSpeed = 0;
+            if (!status) $scope.windSpeed = 0;
         });
         CompactSCADA.setWindSpeed($scope.windSpeed);
     }
