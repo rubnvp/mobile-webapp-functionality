@@ -38,9 +38,22 @@ angular.module('app.controllers', ['app.services'])
 .controller('loginCtrl', function($scope, Navbar, Login) {
     Navbar.view('login');
     
+    $scope.username = undefined;
+    
     $scope.login = function() {
-        Login.login($scope.username);
-    }    
+        Login.login($scope.username)
+        .then(undefined, function(error){
+            alert(error);
+        });
+    }
+    
+    $scope.enableLogin = false;
+    function enableLogin(){
+        var username = $scope.username ? $scope.username : '!';
+        var regexp = /^[(A-Z)|(a-z)|(0-9)]+$/g;        
+        $scope.enableLogin = regexp.test(username);
+    }
+    $scope.$watch(enableLogin);
 })
 
 .controller('windmillCtrl', function($scope, $interval, lit, Navbar, CompactSCADA) {

@@ -1,7 +1,7 @@
 <h2>Login template</h2>
 
-<input type="text" placeholder="Username" ng-model="username">
-
-<p>
-    <button ng-click="login()">Login</button>
-</p>
+<form>
+   <input type="text" placeholder="Username" ng-model="username">
+   <br/><br/>
+   <button ng-click="login()" ng-disabled="!enableLogin">Login</button>
+</form>
