@@ -163,7 +163,8 @@ angular.module('app.services', [])
     }
     
     function deleteSignals(signals){
-        return $http.delete(lit.baseUrl+'/item/delete', signals);
+        var config = { data: signals };
+        return $http.delete(lit.baseUrl+'/item/delete', config);
     }        
     
     var Service = {
