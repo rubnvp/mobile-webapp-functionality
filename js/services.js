@@ -1,5 +1,3 @@
-// TODO: refactor between Login <-> LoginProtocol, CompactScada <-> CompactScadaAPI
-
 'use strict';
 (function(){ 
 
@@ -15,7 +13,7 @@ angular.module('app.services', [])
     return Service;
 })
 
-.factory('Login', function($q, $window, LoginProtocol, Navbar, CompactScadaAPI, Intervals, Random){
+.factory('Login', function($q, $window, LoginProtocol, Navbar, CompactScadaAPI, Intervals){
     var logged = false;
     var username = $window.localStorage.getItem("username"); // null at first time
     var initialWindSpeed = undefined; // fill if reconnect succeed
@@ -34,31 +32,10 @@ angular.module('app.services', [])
     
     // ----- Login
     function login(username) {
-        //return $q.reject("User already exists");
-        username = username + Random.randomInt(1, 200);
-        return LoginProtocol.checkUserExists(username)
-        .then(function(user){
-            if (user.exists) return $q.reject("User already exists."); // collision
-            var signals = [
-                {
-                    Name: "WTG."+username+".WindSpeed",
-                    Type: "DOUBLE",
-                    InitialQuality : 0xC0,
-                    InitialValue: 0
-                },  
-                {
-                    Name: "WTG."+username+".Status",
-                    Type: "BOOL",
-                    InitialQuality : 0xC0,
-                    InitialValue: true
-                },
-            ];
-            return CompactScadaAPI.createSignals(signals);
-        })
-        .then(function(result){
-           if (result.data.WrittenItems !== 2) return $q.reject("An error has occurred, please try again.");
-           setLogin(username);
-           return $q.when(username);
+        return LoginProtocol.login(username)
+        .then(function(newUsername) {
+            setLogin(newUsername);
+            return $q.when(newUsername);
         });
     }
     
@@ -75,14 +52,12 @@ angular.module('app.services', [])
     }
     
     // ----- Logout
-    function logout() {
-        var signals = ["WTG."+username+".WindSpeed", "WTG."+username+".Status"];
-        return CompactScadaAPI.deleteSignals(signals)
-        .then(function(){
-            var _username = username;
+    function logout() {        
+        return LoginProtocol.logout(username)
+        .then(function (oldUsername){
             setLogout();
-            return $q.when(_username);
-        });
+            return $q.when(oldUsername);
+        });                
     }
     
     function setLogout() {       
@@ -105,10 +80,9 @@ angular.module('app.services', [])
     return Service;
 })
 
-.factory('LoginProtocol', function ($q, CompactScadaAPI){
+.factory('LoginProtocol', function ($q, CompactScadaAPI, Random){
     function checkUserExists(username){
-        var deferred = $q.defer();
-      
+        var deferred = $q.defer();      
         CompactScadaAPI.getSignal(username, "WindSpeed")
         .then(function(value){
             if (value === undefined) {
@@ -125,13 +99,50 @@ angular.module('app.services', [])
                     windSpeed: value
                 });
             }
-        });
-        
+        });               
         return deferred.promise; 
     }
     
+    function login(originalUsername){
+        var username = originalUsername + Random.randomInt(1, 200);            
+        
+        return checkUserExists(username)
+        .then(function(user){
+            if (user.exists) return $q.reject("User already exists."); // collision
+            var signals = [
+                {
+                    Name: "WTG."+username+".WindSpeed",
+                    Type: "DOUBLE",
+                    InitialQuality : 0xC0,
+                    InitialValue: 0
+                },  
+                {
+                    Name: "WTG."+username+".Status",
+                    Type: "BOOL",
+                    InitialQuality : 0xC0,
+                    InitialValue: true
+                },
+            ];
+            return CompactScadaAPI.createSignals(signals);
+        })
+        .then(function(result){
+            if (result.data.WrittenItems !== 2) return $q.reject("An error has occurred, please try again.");
+            return $q.when(username);
+        });
+    }
+    
+    function logout(username){
+        var signals = ["WTG."+username+".WindSpeed", "WTG."+username+".Status"];
+        return CompactScadaAPI.deleteSignals(signals)
+        .then(function(){
+            return $q.when(username);
+        });
+    }
+    
     var Service = {
-        checkUserExists: checkUserExists
+        checkUserExists: checkUserExists,
+        login: login,
+        logout: logout
     };     
     return Service;
 })
