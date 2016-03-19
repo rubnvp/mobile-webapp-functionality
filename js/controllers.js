@@ -51,7 +51,10 @@ angular.module('app.controllers', ['app.services'])
             console.log("User logged as "+username);
             $location.path("/windmill");
         }, function(error){
-            console.error(error);
+            if (error = "User already exists.") alert("User already exists, try again.");
+            else {
+                console.error(error);
+            }
         });
     }
     
@@ -90,18 +93,19 @@ angular.module('app.controllers', ['app.services'])
     
     $scope.status = false;
     
+    // Intervals    
+    Intervals.clearAll();
+    
     // windSpeed decreaser
-    $interval.cancel(Intervals.decreaseWindSpeed);
     function decreaseWindSpeed(){
         var windSpeed = $scope.windSpeed;
         if (windSpeed > 0) {
             $scope.windSpeed = windSpeed < lit.decreaseValue ? 0 : windSpeed - lit.decreaseValue;
         }
     }
-    //Intervals.decreaseWindSpeed = $interval(decreaseWindSpeed, lit.decreaseInterval);
+    //Intervals.setInterval( $interval(decreaseWindSpeed, lit.decreaseInterval) );
     
     // updater
-    $interval.cancel(Intervals.updateSignals);
     function updateSignals(){
         CompactScada.getStatus().then(function(status){
             $scope.status = status;
@@ -111,7 +115,7 @@ angular.module('app.controllers', ['app.services'])
         });
         CompactScada.setWindSpeed($scope.windSpeed);
     }
-    Intervals.updateSignals = $interval(updateSignals, lit.updateInterval);
+    Intervals.setInterval( $interval(updateSignals, lit.updateInterval) );
     updateSignals();
 });
 

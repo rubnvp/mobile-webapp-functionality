@@ -15,7 +15,7 @@ angular.module('app.services', [])
     return Service;
 })
 
-.factory('Login', function($q, $window, $interval, LoginProtocol, Navbar, CompactScadaAPI, Intervals, Random){
+.factory('Login', function($q, $window, LoginProtocol, Navbar, CompactScadaAPI, Intervals, Random){
     var logged = false;
     var username = $window.localStorage.getItem("username"); // null at first time
     var initialWindSpeed = undefined; // fill if reconnect succeed
@@ -88,8 +88,9 @@ angular.module('app.services', [])
     function setLogout() {       
         logged = false;
         username = undefined;
+        initialWindSpeed = undefined;
         $window.localStorage.removeItem("username");
-        $interval.cancel(Intervals.updateSignals);
+        Intervals.clearAll();
         Navbar.logged(false, undefined);
     }
     
@@ -200,11 +201,26 @@ angular.module('app.services', [])
     return Service;
 })
 
-.factory('Intervals', function(){
+.factory('Intervals', function($interval){
+    var updateSignals = null;
+    var decreaseWindSpeed = null;
+    var intervals = [];
+    
+    function setInterval(interval){
+        intervals.push(interval);
+    }
+    
+    function clearAll(){
+        intervals.forEach(function(interval){
+            $interval.cancel(interval);
+        });
+        intervals = [];
+    }
+    
     var Service = {
-        updateSignals: null,
-        decreaseWindSpeed: null
-    };     
+        setInterval: setInterval,
+        clearAll: clearAll
+    };
     return Service;
 })
 
