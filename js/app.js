@@ -3,7 +3,8 @@
 
 angular.module('app', [
   'ngRoute',
-  'app.controllers'
+  'app.controllers',
+  'app.services'
 ])
 
 .constant("lit", {
@@ -14,20 +15,88 @@ angular.module('app', [
     updateInterval: 3000
 })
 
-.config(['$routeProvider', function($routeProvider) {
+.config(['$routeProvider', function($routeProvider, $q, $location, Login, CompactScadaAPI) {
   $routeProvider
 
   .when('/login', {
     templateUrl: 'templates/login.html',
-    controller: 'loginCtrl'
+    controller: 'loginCtrl',
+    resolve: {
+        initialWindSpeed: checkRouteLogin
+    }
   })
 
   .when('/windmill', {
     templateUrl: 'templates/windmill.html',
-    controller: 'windmillCtrl'
+    controller: 'windmillCtrl',
+    resolve: {
+        initialWindSpeed: checkRouteWindmill
+    }
   })
 
   .otherwise({redirectTo: '/login'});
+  
+  function checkRouteLogin($q, $location, Login, LoginProtocol){ // inverse of checkRouteWindmill (change resolve <-> reject)
+      var deferred = $q.defer();
+
+      if( Login.isLogged() ) { // if it's already logged then redirect to windmill
+          deferred.reject();
+          $location.path('/windmill');
+      }
+      else if( Login.getUsername() ) { // if it's not logged but has storage username
+          var username = Login.getUsername();          
+          LoginProtocol.checkUserExists(username)
+          .then(function(user){
+              if (user.exists) {
+                  Login.reconnect(user.name, user.windSpeed); // not logged but storage username exists then "reconect"
+                  console.log("reconnected!");
+                  deferred.reject();
+                  $location.path('/windmill');
+              }
+              else {                  
+                  deferred.resolve(); // signal not exists, should login
+              }
+          }, function (error){
+              console.log(error);
+          });
+      }
+      else {
+          deferred.resolve(); // rest of cases should login
+      }
+
+      return deferred.promise;
+  }
+  
+  function checkRouteWindmill($q, $location, Login, LoginProtocol){
+      var deferred = $q.defer();
+
+      if( Login.isLogged() ) { // if it's already logged then ok
+          deferred.resolve();
+      }
+      else if( Login.getUsername() ) { // if it's not logged but has storage username 
+          var username = Login.getUsername();          
+          LoginProtocol.checkUserExists(username)
+          .then(function(user){
+              if (user.exists) {
+                  Login.reconnect(user.name, user.windSpeed); // not logged but storage username exists then "reconect"
+                  console.log("reconnected!");
+                  deferred.resolve(); // resolve with signal value
+              }
+              else {
+                  deferred.reject(); // signal not exists, deny
+                  $location.path('/login');
+              }
+          }, function (error){
+              console.log(error);
+          });
+      }
+      else {
+          deferred.reject(); // rest of cases deny
+          $location.path('/login');
+      }
+
+      return deferred.promise;
+  }
   
 }]);
 

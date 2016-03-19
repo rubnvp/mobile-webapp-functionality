@@ -3,7 +3,7 @@
 
 angular.module('app.controllers', ['app.services'])
 
-.controller('navbarCtrl', function($scope, Navbar, Login) {
+.controller('navbarCtrl', function($scope, $location, Navbar, Login) {
     $scope.view = null; 
     Navbar.view = function(view) {
         $scope.view = view;
@@ -31,35 +31,43 @@ angular.module('app.controllers', ['app.services'])
     $scope.$watch(setNavbarTitle);
     
     $scope.logout = function() {
-        Login.logout();
+        Login.logout().then(function(username){
+            console.log("User "+username+" is logged out");
+            $location.path("/login");
+        }, function(error){
+            console.error(error);
+        });
     }
 })
 
-.controller('loginCtrl', function($scope, Navbar, Login) {
-    Navbar.view('login');
-    
-    $scope.username = undefined;
+.controller('loginCtrl', function($scope, $location, Navbar, Login) {
+    Navbar.view('login');    
+
+    $scope.username =  undefined;
     
     $scope.login = function() {
         Login.login($scope.username)
-        .then(undefined, function(error){
-            alert(error);
+        .then(function(username){
+            console.log("User logged as "+username);
+            $location.path("/windmill");
+        }, function(error){
+            console.error(error);
         });
     }
     
     $scope.enableLogin = false;
     function enableLogin(){
-        var username = $scope.username ? $scope.username : '!';
+        var username = $scope.username ? $scope.username : '!invalid';
         var regexp = /^[(A-Z)|(a-z)|(0-9)]+$/g;        
         $scope.enableLogin = regexp.test(username);
     }
     $scope.$watch(enableLogin);
 })
 
-.controller('windmillCtrl', function($scope, $interval, lit, Navbar, CompactSCADA) {
+.controller('windmillCtrl', function($scope, $interval, lit, Navbar, Intervals, Login, CompactScada) {
     Navbar.view('windmill');
     // signals
-    $scope.windSpeed = 0;    
+    $scope.windSpeed = Login.getInitialWindSpeed() !== undefined ? Login.getInitialWindSpeed() : 0;    
     $scope.addWindSpeed = function(add){
         var windSpeed = $scope.windSpeed;
         if ($scope.status) {
@@ -83,24 +91,28 @@ angular.module('app.controllers', ['app.services'])
     $scope.status = false;
     
     // windSpeed decreaser
+    $interval.cancel(Intervals.decreaseWindSpeed);
     function decreaseWindSpeed(){
         var windSpeed = $scope.windSpeed;
         if (windSpeed > 0) {
             $scope.windSpeed = windSpeed < lit.decreaseValue ? 0 : windSpeed - lit.decreaseValue;
         }
     }
-    //$interval(decreaseWindSpeed, lit.decreaseInterval);
+    //Intervals.decreaseWindSpeed = $interval(decreaseWindSpeed, lit.decreaseInterval);
     
     // updater
-    function update(){
-        CompactSCADA.getStatus().then(function(status){
+    $interval.cancel(Intervals.updateSignals);
+    function updateSignals(){
+        CompactScada.getStatus().then(function(status){
             $scope.status = status;
             if (!status) $scope.windSpeed = 0;
+        }, function(error){
+            console.error(error);
         });
-        CompactSCADA.setWindSpeed($scope.windSpeed);
+        CompactScada.setWindSpeed($scope.windSpeed);
     }
-    $interval(update, lit.updateInterval);
-    update();
+    Intervals.updateSignals = $interval(updateSignals, lit.updateInterval);
+    updateSignals();
 });
 
 })();

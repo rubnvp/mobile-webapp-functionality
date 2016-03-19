@@ -1,3 +1,5 @@
+// TODO: refactor between Login <-> LoginProtocol, CompactScada <-> CompactScadaAPI
+
 'use strict';
 (function(){ 
 
@@ -13,9 +15,10 @@ angular.module('app.services', [])
     return Service;
 })
 
-.factory('Login', function($location, $q, Navbar, CompactScadaAPI){
+.factory('Login', function($q, $window, $interval, LoginProtocol, Navbar, CompactScadaAPI, Intervals, Random){
     var logged = false;
-    var username = undefined;
+    var username = $window.localStorage.getItem("username"); // null at first time
+    var initialWindSpeed = undefined; // fill if reconnect succeed
     
     function isLogged() {
         return logged;
@@ -25,34 +28,109 @@ angular.module('app.services', [])
         return username;
     }
     
+    function getInitialWindSpeed() {
+        return initialWindSpeed;
+    }
+    
     // ----- Login
-    function login(username){
-        return $q.reject("User already exists");
-    }    
+    function login(username) {
+        //return $q.reject("User already exists");
+        username = username + Random.randomInt(1, 200);
+        return LoginProtocol.checkUserExists(username)
+        .then(function(user){
+            if (user.exists) return $q.reject("User already exists."); // collision
+            var signals = [
+                {
+                    Name: "WTG."+username+".WindSpeed",
+                    Type: "DOUBLE",
+                    InitialQuality : 0xC0,
+                    InitialValue: 0
+                },  
+                {
+                    Name: "WTG."+username+".Status",
+                    Type: "BOOL",
+                    InitialQuality : 0xC0,
+                    InitialValue: true
+                },
+            ];
+            return CompactScadaAPI.createSignals(signals);
+        })
+        .then(function(result){
+           if (result.data.WrittenItems !== 2) return $q.reject("An error has occurred, please try again.");
+           setLogin(username);
+           return $q.when(username);
+        });
+    }
+    
+    function reconnect(_username, windSpeed){
+        setLogin(_username);
+        initialWindSpeed = windSpeed;
+    }
+        
     function setLogin(_username) {
         logged = true;
         username = _username;
+        $window.localStorage.setItem("username", username);
         Navbar.logged(true, username);
-        console.log("User "+username+" is logged in");
     }
     
     // ----- Logout
-    function logout(){
-        // console.log("logout");
-        // Navbar.logged(false, undefined);
-    }    
-    function setLogout() {
-        console.log("User "+username+" is logged out");
+    function logout() {
+        var signals = ["WTG."+username+".WindSpeed", "WTG."+username+".Status"];
+        return CompactScadaAPI.deleteSignals(signals)
+        .then(function(){
+            var _username = username;
+            setLogout();
+            return $q.when(_username);
+        });
+    }
+    
+    function setLogout() {       
         logged = false;
         username = undefined;
+        $window.localStorage.removeItem("username");
+        $interval.cancel(Intervals.updateSignals);
         Navbar.logged(false, undefined);
     }
     
     var Service = {
         isLogged: isLogged,
         getUsername: getUsername,
+        getInitialWindSpeed: getInitialWindSpeed,
         login: login,
+        reconnect: reconnect,
         logout: logout
+    };     
+    return Service;
+})
+
+.factory('LoginProtocol', function ($q, CompactScadaAPI){
+    function checkUserExists(username){
+        var deferred = $q.defer();
+      
+        CompactScadaAPI.getSignal(username, "WindSpeed")
+        .then(function(value){
+            if (value === undefined) {
+                deferred.resolve({
+                    exists: false,
+                    name: username,
+                    windSpeed: undefined
+                });
+            }
+            else {
+                deferred.resolve({
+                    exists: true,
+                    name: username,
+                    windSpeed: value
+                });
+            }
+        });
+        
+        return deferred.promise; 
+    }
+    
+    var Service = {
+        checkUserExists: checkUserExists
     };     
     return Service;
 })
@@ -61,10 +139,10 @@ angular.module('app.services', [])
     var baseSignal = "WTG";
     
     function getSignal(username, signal) {
-        var finalSignal = baseSignal+'.'+username+'.'+signal;
-        var jsonPost = finalSignal;
+        var jsonPost = baseSignal+'.'+username+'.'+signal;
         return $http.post(lit.baseUrl+'/itemsFromPattern', jsonPost).then(function(result){
-            return result.data[0].Value;
+            var value = ( result.data && result.data[0] && result.data[0].Value !== undefined ) ? result.data[0].Value : undefined;
+            return value;
         });
     }
     
@@ -79,20 +157,30 @@ angular.module('app.services', [])
         });
     }
     
+    function createSignals(signals){
+        return $http.post(lit.baseUrl+'/item/create', signals);
+    }
+    
+    function deleteSignals(signals){
+        return $http.delete(lit.baseUrl+'/item/delete', signals);
+    }        
+    
     var Service = {
         getSignal: getSignal,
-        setSignal: setSignal
+        setSignal: setSignal,
+        createSignals: createSignals,
+        deleteSignals: deleteSignals
     };     
     return Service;
 })
 
-.factory('CompactScada', function($http, $q, Login, CompactScadaAPI){
+.factory('CompactScada', function($q, Login, CompactScadaAPI){
     function getStatus() {
         if ( Login.isLogged() ) {
             return CompactScadaAPI.getSignal(Login.getUsername(), 'Status');
         }
         else {
-            return $q.defer().reject("User not logged").promise;
+            return $q.reject("User not logged.");
         }        
     }        
     
@@ -101,13 +189,32 @@ angular.module('app.services', [])
             return CompactScadaAPI.setSignal(Login.getUsername(), 'WindSpeed', windSpeed);
         }
         else {
-            return $q.defer().reject("User not logged").promise;
-        }      
+            return $q.reject("User not logged.");
+        }
     }
     
     var Service = {
         getStatus: getStatus,
         setWindSpeed: setWindSpeed
+    };     
+    return Service;
+})
+
+.factory('Intervals', function(){
+    var Service = {
+        updateSignals: null,
+        decreaseWindSpeed: null
+    };     
+    return Service;
+})
+
+.factory('Random', function(){
+    function randomInt(min,max) {
+        return Math.floor(Math.random()*(max-min+1)+min);
+    }
+    
+    var Service = {
+        randomInt: randomInt
     };     
     return Service;
 });
