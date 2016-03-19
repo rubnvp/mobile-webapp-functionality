@@ -83,6 +83,13 @@ angular.module('app.controllers', ['app.services'])
         }
     };
     
+    $scope.windSpeedPercentage = 0;
+    function calculateWindSpeedPercentage(){
+        var percentage =  ($scope.windSpeed / lit.maxWindSpeed ) * 100;
+        $scope.windSpeedPercentage = Math.floor(percentage);
+    }
+    $scope.$watch(calculateWindSpeedPercentage);
+    
     $scope.activePower = 0;
     function calculateActivePower(){
         var windSpeed = $scope.windSpeed;
