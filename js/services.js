@@ -13,7 +13,7 @@ angular.module('app.services', [])
     return Service;
 })
 
-.factory('Login', function($q, $window, LoginProtocol, Navbar, CompactScadaAPI, Intervals){
+.factory('User', function($q, $window, Login, Navbar, Timers){
     var logged = false;
     var username = $window.localStorage.getItem("username"); // null at first time
     var initialWindSpeed = undefined; // fill if reconnect succeed
@@ -32,7 +32,7 @@ angular.module('app.services', [])
     
     // ----- Login
     function login(username) {
-        return LoginProtocol.login(username)
+        return Login.login(username)
         .then(function(newUsername) {
             setLogin(newUsername);
             return $q.when(newUsername);
@@ -53,7 +53,7 @@ angular.module('app.services', [])
     
     // ----- Logout
     function logout() {        
-        return LoginProtocol.logout(username)
+        return Login.logout(username)
         .then(function (oldUsername){
             setLogout();
             return $q.when(oldUsername);
@@ -65,7 +65,7 @@ angular.module('app.services', [])
         username = undefined;
         initialWindSpeed = undefined;
         $window.localStorage.removeItem("username");
-        Intervals.clearAll();
+        Timers.clearAll();
         Navbar.logged(false, undefined);
     }
     
@@ -80,10 +80,10 @@ angular.module('app.services', [])
     return Service;
 })
 
-.factory('LoginProtocol', function ($q, CompactScadaAPI, Random){
+.factory('Login', function ($q, CompactScadaAPI, Random){
     function checkUserExists(username){
         var deferred = $q.defer();      
-        CompactScadaAPI.getSignal(username, "WindSpeed")
+        CompactScadaAPI.getSignal(username, "WindSpeed") // we just check if signal "WTG.username.WindSpeed" exists
         .then(function(value){
             if (value === undefined) {
                 deferred.resolve({
@@ -104,7 +104,7 @@ angular.module('app.services', [])
     }
     
     function login(originalUsername){
-        var username = originalUsername + Random.randomInt(1, 200);            
+        var username = originalUsername + '_' + Random.randomInt(0, 200);            
         
         return checkUserExists(username)
         .then(function(user){
@@ -164,9 +164,7 @@ angular.module('app.services', [])
             Name: finalSignal,
             Value: value
         }];
-        return $http.post(lit.baseUrl+'/item', jsonPost).then(function(result){
-            console.log("Set "+finalSignal+" to "+value);
-        });
+        return $http.post(lit.baseUrl+'/item', jsonPost);
     }
     
     function createSignals(signals){
@@ -187,10 +185,10 @@ angular.module('app.services', [])
     return Service;
 })
 
-.factory('CompactScada', function($q, Login, CompactScadaAPI){
+.factory('CompactScada', function($q, User, CompactScadaAPI){
     function getStatus() {
-        if ( Login.isLogged() ) {
-            return CompactScadaAPI.getSignal(Login.getUsername(), 'Status');
+        if ( User.isLogged() ) {
+            return CompactScadaAPI.getSignal(User.getUsername(), 'Status');
         }
         else {
             return $q.reject("User not logged.");
@@ -198,8 +196,8 @@ angular.module('app.services', [])
     }        
     
     function setWindSpeed(windSpeed){
-        if ( Login.isLogged() ) {
-            return CompactScadaAPI.setSignal(Login.getUsername(), 'WindSpeed', windSpeed);
+        if ( User.isLogged() ) {
+            return CompactScadaAPI.setSignal(User.getUsername(), 'WindSpeed', windSpeed);
         }
         else {
             return $q.reject("User not logged.");
@@ -213,36 +211,57 @@ angular.module('app.services', [])
     return Service;
 })
 
-.factory('Intervals', function($interval){
+.factory('Timers', function($interval){
     var updateSignals = null;
     var decreaseWindSpeed = null;
-    var intervals = [];
+    var timers = [];
     
-    function setInterval(interval){
-        intervals.push(interval);
+    function addTimer(action, interval){
+        var timer = $interval(action, interval);
+        timers.push(timer);
     }
     
     function clearAll(){
-        intervals.forEach(function(interval){
+        timers.forEach(function(interval){
             $interval.cancel(interval);
         });
-        intervals = [];
+        timers = [];
     }
     
     var Service = {
-        setInterval: setInterval,
+        addTimer: addTimer,
         clearAll: clearAll
     };
     return Service;
 })
 
 .factory('Random', function(){
+    var superheroes = [
+        "Adam-Strange", "Aquaman", "Ant-Man", "Barbara-Gordon", "Batman", "Beast", "Black-Canary", "Black-Lightning", 
+        "Black-Panther", "Black-Widow", "Blade", "Blue-Beetle", "Booster-Gold", "Bucky-Barnes", "Captain-America", 
+        "Captain-Britain", "Captain-Marvel", "Catwoman", "Cerebus", "Cyclops", "Daredevil", "Dashiell-Bad-Horse", 
+        "Deadpool", "Donna-Troy", "Dr-Strange", "Dream-of-the-Endless", "Elijah-Snow", "Fone-Bone", "Gambit", "Ghost-Rider", 
+        "Green-Arrow", "Groo", "Green-Lantern", "Hawkeye", "Hawkman", "Hellboy", "Human-Torch", "Invisible-Woman", "Iron-Fist", 
+        "Iron-Man", "James-Gordon", "Jean-Grey", "Jesse-Custer", "John-Constantine", "Jonah-Hex", "Judge-Dredd", "Ka-Zar", 
+        "Kitty-Pryde", "Luke-Cage", "Martian-Manhunter", "Marv", "Michonne", "Mitchell-Hundred", "Moon-Knight", "Nick-Fury", 
+        "Nightcrawler", "Nova", "Professor-X", "Punisher", "Raphael", "Reed-Richards", "Renee-Montoya", "Rick-Grimes", 
+        "Rorschach", "Savage-Dragon", "Scott-Pilgrim", "Sgt-Rock", "She-Hulk", "Silver-Surfer", "Spawn", "Spider-Man", 
+        "Spider-Jerusalem", "Storm", "Sub-Mariner", "Superboy", "Supergirl", "Superman", "Swamp-Thing", "The-Atom", "The-Crow", 
+        "The-Falcon", "The-Flash", "The-Hulk", "The-Rocketeer", "The-Spectre", "The-Spirit", "The-Thing", "The-Tick", "Thor", 
+        "Robin", "Usagi-Yojimbo", "Wasp", "Wildcat", "Wolverine", "Wonder-Woman", "Yorick-Brown"
+    ];
+    
     function randomInt(min,max) {
         return Math.floor(Math.random()*(max-min+1)+min);
     }
     
+    function randomSuperhero() {
+        return superheroes[ randomInt(0, superheroes.length-1) ];
+    }
+    
     var Service = {
-        randomInt: randomInt
+        randomInt: randomInt,
+        randomSuperhero: randomSuperhero
     };     
     return Service;
 });

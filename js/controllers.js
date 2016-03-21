@@ -3,7 +3,7 @@
 
 angular.module('app.controllers', ['app.services'])
 
-.controller('navbarCtrl', function($scope, $location, Navbar, Login) {
+.controller('navbarCtrl', function($scope, $location, Navbar, User) {
     $scope.view = null; 
     Navbar.view = function(view) {
         $scope.view = view;
@@ -31,7 +31,7 @@ angular.module('app.controllers', ['app.services'])
     $scope.$watch(setNavbarTitle);
     
     $scope.logout = function() {
-        Login.logout().then(function(username){
+        User.logout().then(function(username){
             console.log("User "+username+" is logged out");
             $location.path("/login");
         }, function(error){
@@ -40,13 +40,13 @@ angular.module('app.controllers', ['app.services'])
     }
 })
 
-.controller('loginCtrl', function($scope, $location, Navbar, Login) {
+.controller('loginCtrl', function($scope, $location, Navbar, User) {
     Navbar.view('login');    
 
     $scope.username =  undefined;
     
     $scope.login = function() {
-        Login.login($scope.username)
+        User.login($scope.username)
         .then(function(username){
             console.log("User logged as "+username);
             $location.path("/windmill");
@@ -67,10 +67,10 @@ angular.module('app.controllers', ['app.services'])
     $scope.$watch(enableLogin);
 })
 
-.controller('windmillCtrl', function($scope, $interval, lit, Navbar, Intervals, Login, CompactScada) {
+.controller('windmillCtrl', function($scope, $interval, lit, Navbar, Timers, User, CompactScada) {
     Navbar.view('windmill');
     // signals
-    $scope.windSpeed = Login.getInitialWindSpeed() !== undefined ? Login.getInitialWindSpeed() : 0;    
+    $scope.windSpeed = User.getInitialWindSpeed() === undefined ? 0: User.getInitialWindSpeed();    
     $scope.addWindSpeed = function(add){
         var windSpeed = $scope.windSpeed;
         if ($scope.status) {
@@ -100,8 +100,8 @@ angular.module('app.controllers', ['app.services'])
     
     $scope.status = false;
     
-    // Intervals    
-    Intervals.clearAll();
+    // Timers    
+    Timers.clearAll();
     
     // windSpeed decreaser
     function decreaseWindSpeed(){
@@ -110,9 +110,9 @@ angular.module('app.controllers', ['app.services'])
             $scope.windSpeed = windSpeed < lit.decreaseValue ? 0 : windSpeed - lit.decreaseValue;
         }
     }
-    //Intervals.setInterval( $interval(decreaseWindSpeed, lit.decreaseInterval) );
+    //Timers.addTimer(decreaseWindSpeed, lit.decreaseInterval);
     
-    // updater
+    // Update signals
     function updateSignals(){
         CompactScada.getStatus().then(function(status){
             $scope.status = status;
@@ -120,9 +120,13 @@ angular.module('app.controllers', ['app.services'])
         }, function(error){
             console.error(error);
         });
-        CompactScada.setWindSpeed($scope.windSpeed);
+        CompactScada.setWindSpeed($scope.windSpeed).then(function(result) {
+            // on success do nothing
+        }, function(error) {
+            console.error(error);
+        });
     }
-    Intervals.setInterval( $interval(updateSignals, lit.updateInterval) );
+    Timers.addTimer(updateSignals, lit.updateInterval);
     updateSignals();
 });
 
