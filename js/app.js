@@ -9,10 +9,15 @@ angular.module('app', [
 
 .constant("lit", {
     maxWindSpeed: 30,
-    decreaseInterval: 3000,
-    decreaseValue: 3,
+    // Decrease WindSpeed Timer
+    decreaseWindSpeedInterval: 1000,
+    decreaseValue: -2,
+    // Windmill rotation animation
+    maxWindmillRotationPeriod: 0.75,
+    // CompactCADA reference url
     baseUrl: "http://cscadademonight.westeurope.cloudapp.azure.com:8080/api",
-    updateInterval: 3000
+    // Update signals timer
+    updateSignalsInterval: 3000
 })
 
 .config(['$routeProvider', function($routeProvider, $q, $location, Login, User) {

@@ -1,6 +1,11 @@
 <h2>Windmill template</h2>
 <p>
-    Wind Speed: {{windSpeed}} m/s  - Percentage: {{windSpeedPercentage}}%
+    <div id="rotor" style="height: 40px; width: 40px; background-color: green;">
+        Rotor
+    </div>
+</p>
+<p>
+    Wind Speed: {{windSpeed}} m/s
     <div>
         <button ng-click="addWindSpeed(1)">Increase</button>
         <button ng-click="addWindSpeed(-1)">Decrease</button>
@@ -11,4 +16,8 @@
 </p>
 <p>
     Status: {{status ? 'Enabled' : 'Disabled'}}
+</p>
+<p>
+    Percentage: {{windSpeedPercentage}}%</br>
+    Bar Color: {{barColor}}
 </p>

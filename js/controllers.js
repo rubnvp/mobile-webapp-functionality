@@ -70,47 +70,76 @@ angular.module('app.controllers', ['app.services'])
 .controller('windmillCtrl', function($scope, $interval, lit, Navbar, Timers, User, CompactScada) {
     Navbar.view('windmill');
     // signals
-    $scope.windSpeed = User.getInitialWindSpeed() === undefined ? 0: User.getInitialWindSpeed();    
-    $scope.addWindSpeed = function(add){
+    $scope.windSpeed = User.getInitialWindSpeed() === undefined ? 0: User.getInitialWindSpeed();        
+    
+    function addWindSpeed(value) {
         var windSpeed = $scope.windSpeed;
         if ($scope.status) {
-            if( add > 0) {
-                $scope.windSpeed =  windSpeed+add > lit.maxWindSpeed ? lit.maxWindSpeed : windSpeed + add;
+            if( value > 0) { // if we are adding
+                $scope.windSpeed =  windSpeed+value > lit.maxWindSpeed ? lit.maxWindSpeed : windSpeed + value;
             }
-            else {
-                $scope.windSpeed =  windSpeed+add < 0 ? 0 : windSpeed + add;
+            else {          // if we are subtracting
+                $scope.windSpeed =  windSpeed+value < 0 ? 0 : windSpeed + value;
             }
         }
-    };
-    
-    $scope.windSpeedPercentage = 0;
-    function calculateWindSpeedPercentage(){
-        var percentage =  ($scope.windSpeed / lit.maxWindSpeed ) * 100;
-        $scope.windSpeedPercentage = Math.floor(percentage);
     }
-    $scope.$watch(calculateWindSpeedPercentage);
+    $scope.addWindSpeed = addWindSpeed;
     
     $scope.activePower = 0;
-    function calculateActivePower(){
-        var windSpeed = $scope.windSpeed;
+    function setActivePower(windSpeed){
         var activePower = windSpeed <= 0 ? 0 : Math.log(windSpeed)*500;  
         $scope.activePower = activePower.toFixed(2);
     }
-    $scope.$watch(calculateActivePower);
+    
+    $scope.windSpeedPercentage = 0;
+    function setWindSpeedPercentage(windSpeed){
+        var percentage =  (windSpeed / lit.maxWindSpeed ) * 100;
+        $scope.windSpeedPercentage = Math.floor(percentage);
+    }
     
     $scope.status = false;
+
+    $scope.barColor = "hsla(10, 70%, 50%, 1)"; // hueMin
+    function setBarColor(windSpeed){
+        var percentage =  (windSpeed / lit.maxWindSpeed ) * 100;
+        var hueMin = 10;
+        var hueMax = 130;
+        var hue = hueMin + (hueMax-hueMin) * percentage/100;
+        $scope.barColor = "hsla("+Math.floor(hue)+", 70%, 50%, 1)";
+    }
     
-    // Timers    
-    Timers.clearAll();
+    // Tween to control windmill rotation    
+    var tween = TweenMax.to('#rotor', lit.maxWindmillRotationPeriod, {
+        rotation: "360deg", 
+        ease: Power0.easeNone,
+        repeat: -1
+    });  
     
-    // windSpeed decreaser
-    function decreaseWindSpeed(){
-        var windSpeed = $scope.windSpeed;
-        if (windSpeed > 0) {
-            $scope.windSpeed = windSpeed < lit.decreaseValue ? 0 : windSpeed - lit.decreaseValue;
+    function setRotorSpeed(windSpeed, oldWindSpeed){
+        if (windSpeed === 0) tween.pause();
+        else {
+            var timeScale = windSpeed / lit.maxWindSpeed;
+            tween.timeScale(timeScale);
+            if (oldWindSpeed === 0) tween.resume();
         }
     }
-    //Timers.addTimer(decreaseWindSpeed, lit.decreaseInterval);
+    
+    // Watch windSpeed
+    $scope.$watch('windSpeed', function(windSpeed, oldWindSpeed){        
+        setActivePower(windSpeed);
+        setWindSpeedPercentage(windSpeed);
+        setBarColor(windSpeed);
+        setRotorSpeed(windSpeed, oldWindSpeed);               
+    }, true);        
+    
+    
+    // Timers    
+    
+    // Wind Speed decreaser
+    function decreaseWindSpeed(){
+        addWindSpeed(lit.decreaseValue);
+    }
+    Timers.addTimer(decreaseWindSpeed, lit.decreaseWindSpeedInterval);
     
     // Update signals
     function updateSignals(){
@@ -126,7 +155,7 @@ angular.module('app.controllers', ['app.services'])
             console.error(error);
         });
     }
-    Timers.addTimer(updateSignals, lit.updateInterval);
+    Timers.addTimer(updateSignals, lit.updateSignalsInterval);
     updateSignals();
 });
 
